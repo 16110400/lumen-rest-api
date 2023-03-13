@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Validator;
 
 class UserController extends Controller
 {
@@ -65,5 +66,80 @@ class UserController extends Controller
         ]);
 
         return response()->json($user);
+    }
+
+    // JWT Login
+    public function loginJwt(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email',
+            'password' => 'required|min:6'
+        ],
+        [
+            'required'  => ':attribute harus diisi',
+            'min'       => ':attribute minimal :min karakter',
+            'email'       => ':attribute harus dengan format email yang benar',
+        ]);
+
+        if ($validator->fails()) {
+            $resp = [
+                'metadata' => [
+                        'message' => $validator->errors()->first(),
+                        'code'    => 422
+                    ]
+                ];
+            return response()->json($resp, 422);
+            die();
+        }
+
+        $user = User::where('email', $request->email)->first();
+
+        if($user)
+        {
+            $isInvalidPassword = Hash::check($request->password, $user->password);
+
+            if($isInvalidPassword)
+            {
+
+                // $token = \Auth::login($user);
+                $credentials = request(['email', 'password']);
+
+                if (!$token = auth()->attempt($credentials)) {
+
+                }
+
+                $resp = [
+                    'response' => [
+                        'token'=> $token
+                    ],
+                    'metadata' => [
+                        'message' => 'OK',
+                        'code'    => 200
+                    ]
+                ];
+
+                return response()->json($resp);
+            }else{
+
+                $resp = [
+                    'metadata' => [
+                        'message' => 'Username Atau Password Tidak Sesuai',
+                        'code'    => 401
+                    ]
+                ];
+
+                return response()->json($resp, 401);
+            }
+        }else{
+            $resp = [
+                'metadata' => [
+                    'message' => 'Username Atau Password Tidak Sesuai',
+                    'code'    => 401
+                ]
+            ];
+
+            return response()->json($resp, 401);
+        }
+
     }
 }
